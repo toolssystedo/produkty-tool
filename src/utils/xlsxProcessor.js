@@ -101,11 +101,11 @@ export function processData(data, originalColumns) {
 
     const mainCategory = getMainCategory(product.defaultCategory);
     const currentSubCategory = getSubCategory(product.defaultCategory);
+    const currentCategoryTexts = getAllCategoryTexts(product);
 
-    // SOUVISEJÍCÍ PRODUKTY (relatedProduct)
-    // Vyber až 10 náhodných produktů se STEJNOU hlavní kategorií
-    // Preferuj produkty s jinou podkategorií, ale pokud jich není dost, použij i produkty se stejnou podkategorií
-    const selectedRelatedCodes = [];
+    // PŘÍPRAVA KANDIDÁTŮ PRO RELATED PRODUKTY
+    // Produkty se STEJNOU hlavní kategorií, preferuj jinou podkategorii
+    let relatedCandidates = [];
     if (mainCategory) {
       const sameMainCategoryProducts = productsByMainCategory.get(mainCategory) || [];
 
@@ -118,7 +118,6 @@ export function processData(data, originalColumns) {
 
       allCandidates.forEach(p => {
         const pSubCategory = getSubCategory(p.defaultCategory);
-        // Porovnávej pouze pokud obě podkategorie existují
         if (currentSubCategory && pSubCategory && pSubCategory !== currentSubCategory) {
           differentSubCategory.push(p);
         } else if (!currentSubCategory || !pSubCategory || pSubCategory === currentSubCategory) {
@@ -126,39 +125,14 @@ export function processData(data, originalColumns) {
         }
       });
 
-      // Preferuj produkty s jinou podkategorií, ale doplň produkty se stejnou podkategorií pokud je potřeba
-      const shuffledDifferent = shuffleArray(differentSubCategory);
-      const shuffledSame = shuffleArray(sameSubCategory);
-
-      // Nejdřív přidej produkty s jinou podkategorií
-      shuffledDifferent.slice(0, 10).forEach(p => selectedRelatedCodes.push(p.code));
-
-      // Pokud jich není 10, doplň produkty se stejnou podkategorií
-      if (selectedRelatedCodes.length < 10) {
-        const remaining = 10 - selectedRelatedCodes.length;
-        shuffledSame.slice(0, remaining).forEach(p => selectedRelatedCodes.push(p.code));
-      }
-
-      // Debug výpis
-      console.log(`[Related] Produkt ${product.code}: hlavní kategorie="${mainCategory}", podkategorie="${currentSubCategory || '(žádná)'}", ` +
-        `kandidátů celkem=${allCandidates.length}, s jinou podkat.=${differentSubCategory.length}, ` +
-        `se stejnou podkat.=${sameSubCategory.length}, vybráno=${selectedRelatedCodes.length}`);
-    } else {
-      console.log(`[Related] Produkt ${product.code}: NEMÁ hlavní kategorii (defaultCategory="${product.defaultCategory}")`);
+      // Preferuj produkty s jinou podkategorií, pak doplň se stejnou
+      relatedCandidates = [...shuffleArray(differentSubCategory), ...shuffleArray(sameSubCategory)];
     }
 
-    // Přidej relatedProduct sloupce
-    relatedColumns.forEach((colName, index) => {
-      result[colName] = selectedRelatedCodes[index] || '';
-    });
-
-    // PODOBNÉ PRODUKTY (alternativeProduct)
-    // Vyber až 10 náhodných produktů ze VŠECH categoryText kategorií produktu
-    const selectedAlternativeCodes = [];
-    const currentCategoryTexts = getAllCategoryTexts(product);
-
+    // PŘÍPRAVA KANDIDÁTŮ PRO ALTERNATIVE PRODUKTY
+    // Produkty ze VŠECH categoryText kategorií produktu
+    let alternativeCandidates = [];
     if (currentCategoryTexts.length > 0) {
-      // Sbírej kandidáty ze všech categoryText kategorií
       const allAlternativeCandidates = new Set();
 
       currentCategoryTexts.forEach(categoryText => {
@@ -170,11 +144,76 @@ export function processData(data, originalColumns) {
         });
       });
 
-      // Převeď Set na pole a náhodně vyber až 10 produktů
-      const candidatesArray = Array.from(allAlternativeCandidates);
-      const shuffledAlternative = shuffleArray(candidatesArray);
-      shuffledAlternative.slice(0, 10).forEach(p => selectedAlternativeCodes.push(p.code));
+      alternativeCandidates = shuffleArray(Array.from(allAlternativeCandidates));
     }
+
+    // STŘÍDAVÉ PŘIŘAZOVÁNÍ - 1 related, 1 alternative, 1 related, 1 alternative...
+    // Zajistí rovnoměrné rozdělení produktů mezi obě skupiny
+    const selectedRelatedCodes = [];
+    const selectedAlternativeCodes = [];
+    const usedCodes = new Set(); // Sledování již použitých kódů (pro obě skupiny)
+
+    let relatedIndex = 0;
+    let alternativeIndex = 0;
+
+    for (let i = 0; i < 20; i++) { // Max 10 + 10 = 20 iterací
+      if (i % 2 === 0) {
+        // Sudá iterace - přidej related produkt
+        if (selectedRelatedCodes.length < 10) {
+          while (relatedIndex < relatedCandidates.length) {
+            const candidate = relatedCandidates[relatedIndex];
+            relatedIndex++;
+            if (!usedCodes.has(candidate.code)) {
+              selectedRelatedCodes.push(candidate.code);
+              usedCodes.add(candidate.code);
+              break;
+            }
+          }
+        }
+      } else {
+        // Lichá iterace - přidej alternative produkt
+        if (selectedAlternativeCodes.length < 10) {
+          while (alternativeIndex < alternativeCandidates.length) {
+            const candidate = alternativeCandidates[alternativeIndex];
+            alternativeIndex++;
+            if (!usedCodes.has(candidate.code)) {
+              selectedAlternativeCodes.push(candidate.code);
+              usedCodes.add(candidate.code);
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    // Doplň zbývající related produkty (pokud jsou k dispozici a ještě není 10)
+    while (selectedRelatedCodes.length < 10 && relatedIndex < relatedCandidates.length) {
+      const candidate = relatedCandidates[relatedIndex];
+      relatedIndex++;
+      if (!usedCodes.has(candidate.code)) {
+        selectedRelatedCodes.push(candidate.code);
+        usedCodes.add(candidate.code);
+      }
+    }
+
+    // Doplň zbývající alternative produkty (pokud jsou k dispozici a ještě není 10)
+    while (selectedAlternativeCodes.length < 10 && alternativeIndex < alternativeCandidates.length) {
+      const candidate = alternativeCandidates[alternativeIndex];
+      alternativeIndex++;
+      if (!usedCodes.has(candidate.code)) {
+        selectedAlternativeCodes.push(candidate.code);
+        usedCodes.add(candidate.code);
+      }
+    }
+
+    // Debug výpis
+    console.log(`[Produkt ${product.code}] related=${selectedRelatedCodes.length}, alternative=${selectedAlternativeCodes.length}, ` +
+      `kandidátů related=${relatedCandidates.length}, kandidátů alternative=${alternativeCandidates.length}`);
+
+    // Přidej relatedProduct sloupce
+    relatedColumns.forEach((colName, index) => {
+      result[colName] = selectedRelatedCodes[index] || '';
+    });
 
     // Přidej alternativeProduct sloupce
     alternativeColumns.forEach((colName, index) => {

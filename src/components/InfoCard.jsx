@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 export function InfoCard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   return (
     <>
@@ -53,6 +54,35 @@ export function InfoCard() {
               <p className="text-sm text-gray-500">Soubor obsahuje nové sloupce relatedProduct1-10 a alternativeProduct1-10</p>
             </div>
           </div>
+
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full text-white flex items-center justify-center flex-shrink-0 text-sm font-bold bg-brand-green">
+              4
+            </div>
+            <div>
+              <p className="font-medium text-gray-700">Naimportujte upravený soubor</p>
+              <p className="text-sm text-gray-500">1. V levém menu otevřete "Produkty" a "Import"</p>
+              <p className="text-sm text-gray-500">
+                2. V otevřeném importu v případě potřeby změňte nastavení{' '}
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="font-medium underline hover:no-underline cursor-pointer text-brand-green"
+                >
+                  podle návodu
+                </button>
+              </p>
+              <p className="text-sm text-gray-500">3. Vyberte nově stažený soubor a v horní části pomocí tlačítka "Import" naimportujte</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Pro zobrazení návodu klikněte{' '}
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="font-medium underline hover:no-underline cursor-pointer text-brand-green"
+                >
+                  zde
+                </button>
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="mt-6 pt-4 info-card-footer">
@@ -69,7 +99,7 @@ export function InfoCard() {
         </div>
       </div>
 
-      {/* Modal pro zobrazení obrázku */}
+      {/* Modal pro zobrazení obrázku šablony exportu */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -91,6 +121,35 @@ export function InfoCard() {
             <img
               src="/sablona-exportu.jpg"
               alt="Šablona exportu"
+              className="w-full h-auto rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Modal pro zobrazení návodu na import */}
+      {isImportModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
+          onClick={() => setIsImportModalOpen(false)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] w-full">
+            {/* Tlačítko zavřít */}
+            <button
+              onClick={() => setIsImportModalOpen(false)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Obrázek */}
+            <img
+              src="/import-produktu.jpg"
+              alt="Návod na import produktu"
               className="w-full h-auto rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />
