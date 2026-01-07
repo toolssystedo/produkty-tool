@@ -3,6 +3,7 @@ import { useState } from 'react';
 export function InfoCard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isPathModalOpen, setIsPathModalOpen] = useState(false);
 
   return (
     <>
@@ -21,7 +22,16 @@ export function InfoCard() {
             </div>
             <div>
               <p className="font-medium text-gray-700">Nahrajte XLSX export</p>
-              <p className="text-sm text-gray-500">Soubor musí obsahovat sloupce: code, defaultCategory, categoryText</p>
+              <p className="text-sm text-gray-500">Soubor musí obsahovat pouze sloupce: code, defaultCategory, categoryText</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Pro zobrazení cesty k exportu klikněte{' '}
+                <button
+                  onClick={() => setIsPathModalOpen(true)}
+                  className="font-medium underline hover:no-underline cursor-pointer text-brand-green"
+                >
+                  zde
+                </button>
+              </p>
               <p className="text-sm text-gray-500 mt-1">
                 Pro zobrazení šablony exportu klikněte{' '}
                 <button
@@ -121,6 +131,35 @@ export function InfoCard() {
             <img
               src="/sablona-exportu.jpg"
               alt="Šablona exportu"
+              className="w-full h-auto rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Modal pro zobrazení cesty k exportu */}
+      {isPathModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
+          onClick={() => setIsPathModalOpen(false)}
+        >
+          <div className="relative max-h-[90vh]" style={{ width: '125%', maxWidth: '90vw' }}>
+            {/* Tlačítko zavřít */}
+            <button
+              onClick={() => setIsPathModalOpen(false)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 transition-colors"
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Obrázek */}
+            <img
+              src="/cesta-k-exportu.jpg"
+              alt="Cesta k exportu"
               className="w-full h-auto rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             />
