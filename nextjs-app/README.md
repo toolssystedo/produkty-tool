@@ -38,7 +38,7 @@ npm install
 npm run dev
 ```
 
-Aplikace bude dostupná na [http://localhost:3000/produkty-tool](http://localhost:3000/produkty-tool)
+Aplikace bude dostupná na [http://localhost:3000](http://localhost:3000)
 
 ### Build pro produkci
 
@@ -97,19 +97,16 @@ cd nextjs-app
 vercel
 ```
 
-### Nastavení pro subdomain/subfolder
+### Nastavení pro subfolder
 
-Aplikace je nakonfigurována s `basePath: '/produkty-tool'`. Pokud chcete změnit cestu:
+Pokud chcete aplikaci hostovat na subpath (např. `/produkty-tool/`), přidejte basePath do `next.config.ts`:
 
-1. Upravte `next.config.ts`:
-   ```typescript
-   const nextConfig: NextConfig = {
-     basePath: '/vase-cesta',  // nebo '' pro root
-     // ...
-   };
-   ```
-
-2. Znovu sestavte aplikaci
+```typescript
+const nextConfig: NextConfig = {
+  basePath: '/produkty-tool',
+  // ...
+};
+```
 
 ## Konfigurace
 

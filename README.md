@@ -14,7 +14,7 @@ npm install
 npm run dev
 ```
 
-Aplikace poběží na http://localhost:3000/produkty-tool
+Aplikace poběží na http://localhost:3000
 
 ## Funkce
 
