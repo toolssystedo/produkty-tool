@@ -6,6 +6,7 @@ import { DownloadButton } from './components/DownloadButton';
 import { History } from './components/History';
 import { InfoCard } from './components/InfoCard';
 import { DataQualityStats } from './components/DataQualityStats';
+import { ProductSettings } from './components/ProductSettings';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useDarkMode } from './hooks/useDarkMode';
 import {
@@ -30,8 +31,18 @@ function App() {
   const [detailedStats, setDetailedStats] = useState(null);
   const [showStats, setShowStats] = useState(false);
   const [history, setHistory] = useLocalStorage('xlsx-processor-history', []);
+  const [productSettings, setProductSettings] = useState({
+    related: { enabled: true, count: 10 },
+    alternative: { enabled: true, count: 10 }
+  });
 
   const handleFileSelect = useCallback(async (file) => {
+    // Validate settings
+    if (!productSettings.related.enabled && !productSettings.alternative.enabled) {
+      setError('Vyberte alespoň jeden typ produktů k přiřazení');
+      return;
+    }
+
     setIsProcessing(true);
     setIsComplete(false);
     setError(null);
@@ -52,8 +63,8 @@ function App() {
         throw new Error(validation.error);
       }
 
-      // Zpracování dat (s původním pořadím sloupců)
-      const processed = processData(data, columns);
+      // Zpracování dat (s původním pořadím sloupců a nastavením)
+      const processed = processData(data, columns, productSettings);
 
       // Získání statistik
       const statistics = getStats(processed);
@@ -80,14 +91,14 @@ function App() {
     } finally {
       setIsProcessing(false);
     }
-  }, [setHistory]);
+  }, [setHistory, productSettings]);
 
   const handleDownload = useCallback(() => {
     if (processedData) {
       const outputFileName = fileName.replace(/\.xlsx?$/i, '_processed.xlsx');
-      downloadXlsx(processedData, outputFileName, originalColumns);
+      downloadXlsx(processedData, outputFileName, originalColumns, productSettings);
     }
-  }, [processedData, fileName, originalColumns]);
+  }, [processedData, fileName, originalColumns, productSettings]);
 
   const handleExportPDF = useCallback(() => {
     if (detailedStats) {
@@ -126,6 +137,17 @@ function App() {
               onFileSelect={handleFileSelect}
               isProcessing={isProcessing}
             />
+
+            {/* Product Settings - before processing */}
+            {!isProcessing && !isComplete && !error && (
+              <div className="mt-6">
+                <ProductSettings
+                  settings={productSettings}
+                  onChange={setProductSettings}
+                  disabled={isProcessing}
+                />
+              </div>
+            )}
 
             {/* Processing Status */}
             {(isProcessing || isComplete || error) && (

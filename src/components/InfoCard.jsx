@@ -91,6 +91,13 @@ export function InfoCard() {
                   zde
                 </button>
               </p>
+              {/* Varování o přepsání */}
+              <div className="mt-3 ml-0 p-3 bg-amber-50 border-l-4 border-amber-400 rounded-r-lg">
+                <p className="text-xs text-amber-700 flex items-start gap-2">
+                  <span className="flex-shrink-0">⚠️</span>
+                  <span><strong>Upozornění:</strong> Pokud již máte u produktů nastavené související nebo podobné produkty, importem nového souboru se tyto hodnoty přepíší a nahradí novými.</span>
+                </p>
+              </div>
             </div>
           </div>
         </div>

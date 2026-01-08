@@ -53,8 +53,21 @@ function getAllCategoryTexts(product) {
 /**
  * Zpracuje data z XLSX souboru a přidá související a podobné produkty
  * Zachovává původní pořadí sloupců a přidává nové na konec
+ * @param {Array} data - Data z XLSX souboru
+ * @param {Array} originalColumns - Původní pořadí sloupců
+ * @param {Object} settings - Nastavení pro generování produktů
+ * @param {Object} settings.related - Nastavení pro související produkty
+ * @param {boolean} settings.related.enabled - Zda generovat související produkty
+ * @param {number} settings.related.count - Počet souvisejících produktů (1-10)
+ * @param {Object} settings.alternative - Nastavení pro podobné produkty
+ * @param {boolean} settings.alternative.enabled - Zda generovat podobné produkty
+ * @param {number} settings.alternative.count - Počet podobných produktů (1-10)
  */
-export function processData(data, originalColumns) {
+export function processData(data, originalColumns, settings = { related: { enabled: true, count: 10 }, alternative: { enabled: true, count: 10 } }) {
+  const relatedEnabled = settings.related?.enabled ?? true;
+  const relatedCount = Math.min(10, Math.max(1, settings.related?.count ?? 10));
+  const alternativeEnabled = settings.alternative?.enabled ?? true;
+  const alternativeCount = Math.min(10, Math.max(1, settings.alternative?.count ?? 10));
   // Vytvoření indexů pro rychlé vyhledávání
   const productsByMainCategory = new Map(); // hlavní kategorie -> produkty
   const productsByCategoryText = new Map(); // kompletní categoryText -> produkty
@@ -81,9 +94,13 @@ export function processData(data, originalColumns) {
     });
   });
 
-  // Definice názvů nových sloupců
-  const relatedColumns = ['relatedProduct', ...Array.from({ length: 9 }, (_, i) => `relatedProduct${i + 2}`)];
-  const alternativeColumns = ['alternativeProduct', ...Array.from({ length: 9 }, (_, i) => `alternativeProduct${i + 2}`)];
+  // Definice názvů nových sloupců (podle nastavení)
+  const relatedColumns = relatedEnabled
+    ? ['relatedProduct', ...Array.from({ length: relatedCount - 1 }, (_, i) => `relatedProduct${i + 2}`)]
+    : [];
+  const alternativeColumns = alternativeEnabled
+    ? ['alternativeProduct', ...Array.from({ length: alternativeCount - 1 }, (_, i) => `alternativeProduct${i + 2}`)]
+    : [];
 
   // Zpracování každého produktu
   const processedData = data.map((product) => {
@@ -153,16 +170,17 @@ export function processData(data, originalColumns) {
     const selectedAlternativeCodes = [];
     const usedCodes = new Set(); // Sledování již použitých kódů (pro obě skupiny)
 
-    let relatedIndex = 0;
-    let alternativeIndex = 0;
+    let relatedIdx = 0;
+    let alternativeIdx = 0;
 
-    for (let i = 0; i < 20; i++) { // Max 10 + 10 = 20 iterací
+    const maxIterations = relatedCount + alternativeCount;
+    for (let i = 0; i < maxIterations; i++) {
       if (i % 2 === 0) {
         // Sudá iterace - přidej related produkt
-        if (selectedRelatedCodes.length < 10) {
-          while (relatedIndex < relatedCandidates.length) {
-            const candidate = relatedCandidates[relatedIndex];
-            relatedIndex++;
+        if (relatedEnabled && selectedRelatedCodes.length < relatedCount) {
+          while (relatedIdx < relatedCandidates.length) {
+            const candidate = relatedCandidates[relatedIdx];
+            relatedIdx++;
             if (!usedCodes.has(candidate.code)) {
               selectedRelatedCodes.push(candidate.code);
               usedCodes.add(candidate.code);
@@ -172,10 +190,10 @@ export function processData(data, originalColumns) {
         }
       } else {
         // Lichá iterace - přidej alternative produkt
-        if (selectedAlternativeCodes.length < 10) {
-          while (alternativeIndex < alternativeCandidates.length) {
-            const candidate = alternativeCandidates[alternativeIndex];
-            alternativeIndex++;
+        if (alternativeEnabled && selectedAlternativeCodes.length < alternativeCount) {
+          while (alternativeIdx < alternativeCandidates.length) {
+            const candidate = alternativeCandidates[alternativeIdx];
+            alternativeIdx++;
             if (!usedCodes.has(candidate.code)) {
               selectedAlternativeCodes.push(candidate.code);
               usedCodes.add(candidate.code);
@@ -186,20 +204,20 @@ export function processData(data, originalColumns) {
       }
     }
 
-    // Doplň zbývající related produkty (pokud jsou k dispozici a ještě není 10)
-    while (selectedRelatedCodes.length < 10 && relatedIndex < relatedCandidates.length) {
-      const candidate = relatedCandidates[relatedIndex];
-      relatedIndex++;
+    // Doplň zbývající related produkty (pokud jsou k dispozici a ještě není požadovaný počet)
+    while (relatedEnabled && selectedRelatedCodes.length < relatedCount && relatedIdx < relatedCandidates.length) {
+      const candidate = relatedCandidates[relatedIdx];
+      relatedIdx++;
       if (!usedCodes.has(candidate.code)) {
         selectedRelatedCodes.push(candidate.code);
         usedCodes.add(candidate.code);
       }
     }
 
-    // Doplň zbývající alternative produkty (pokud jsou k dispozici a ještě není 10)
-    while (selectedAlternativeCodes.length < 10 && alternativeIndex < alternativeCandidates.length) {
-      const candidate = alternativeCandidates[alternativeIndex];
-      alternativeIndex++;
+    // Doplň zbývající alternative produkty (pokud jsou k dispozici a ještě není požadovaný počet)
+    while (alternativeEnabled && selectedAlternativeCodes.length < alternativeCount && alternativeIdx < alternativeCandidates.length) {
+      const candidate = alternativeCandidates[alternativeIdx];
+      alternativeIdx++;
       if (!usedCodes.has(candidate.code)) {
         selectedAlternativeCodes.push(candidate.code);
         usedCodes.add(candidate.code);
@@ -210,15 +228,19 @@ export function processData(data, originalColumns) {
     console.log(`[Produkt ${product.code}] related=${selectedRelatedCodes.length}, alternative=${selectedAlternativeCodes.length}, ` +
       `kandidátů related=${relatedCandidates.length}, kandidátů alternative=${alternativeCandidates.length}`);
 
-    // Přidej relatedProduct sloupce
-    relatedColumns.forEach((colName, index) => {
-      result[colName] = selectedRelatedCodes[index] || '';
-    });
+    // Přidej relatedProduct sloupce (pokud jsou povoleny)
+    if (relatedEnabled) {
+      relatedColumns.forEach((colName, index) => {
+        result[colName] = selectedRelatedCodes[index] || '';
+      });
+    }
 
-    // Přidej alternativeProduct sloupce
-    alternativeColumns.forEach((colName, index) => {
-      result[colName] = selectedAlternativeCodes[index] || '';
-    });
+    // Přidej alternativeProduct sloupce (pokud jsou povoleny)
+    if (alternativeEnabled) {
+      alternativeColumns.forEach((colName, index) => {
+        result[colName] = selectedAlternativeCodes[index] || '';
+      });
+    }
 
     return result;
   });
@@ -284,11 +306,24 @@ export function readXlsxFile(file) {
 /**
  * Vytvoří XLSX soubor z dat a stáhne ho
  * Zachovává původní pořadí sloupců a přidává nové na konec
+ * @param {Array} data - Data ke stažení
+ * @param {string} filename - Název souboru
+ * @param {Array} originalColumns - Původní pořadí sloupců
+ * @param {Object} settings - Nastavení pro generování sloupců
  */
-export function downloadXlsx(data, filename = 'processed_products.xlsx', originalColumns = []) {
-  // Definuj nové sloupce
-  const relatedColumns = ['relatedProduct', ...Array.from({ length: 9 }, (_, i) => `relatedProduct${i + 2}`)];
-  const alternativeColumns = ['alternativeProduct', ...Array.from({ length: 9 }, (_, i) => `alternativeProduct${i + 2}`)];
+export function downloadXlsx(data, filename = 'processed_products.xlsx', originalColumns = [], settings = { related: { enabled: true, count: 10 }, alternative: { enabled: true, count: 10 } }) {
+  const relatedEnabled = settings.related?.enabled ?? true;
+  const relatedCount = Math.min(10, Math.max(1, settings.related?.count ?? 10));
+  const alternativeEnabled = settings.alternative?.enabled ?? true;
+  const alternativeCount = Math.min(10, Math.max(1, settings.alternative?.count ?? 10));
+
+  // Definuj nové sloupce (podle nastavení)
+  const relatedColumns = relatedEnabled
+    ? ['relatedProduct', ...Array.from({ length: relatedCount - 1 }, (_, i) => `relatedProduct${i + 2}`)]
+    : [];
+  const alternativeColumns = alternativeEnabled
+    ? ['alternativeProduct', ...Array.from({ length: alternativeCount - 1 }, (_, i) => `alternativeProduct${i + 2}`)]
+    : [];
 
   // Finální pořadí sloupců: původní + related + alternative
   const finalColumnOrder = [...originalColumns, ...relatedColumns, ...alternativeColumns];
